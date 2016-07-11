@@ -32,7 +32,7 @@ parser.verbose_match(["id", "+", "id"])
 
 parser.verbose_match(["id", "+", "id"], True)
 """
- If the second param is true, it displays the stack at each step:
+ If the second param is True, it displays the stack at each step:
 	Stack: ['$', 'E']
 	** Action: reduce E on `id` to: T E'
 	Stack: ['$', "E'", 'T']
