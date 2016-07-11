@@ -12,7 +12,7 @@ parser = PredictiveParser("E", {
 for symbol, items in parser.first_dict.iteritems():
 	if symbol in parser.terminals:
 		print symbol, items
-
+		
 # Print first set of nonterminals.
 for symbol, items in parser.first_dict.iteritems():
 	if symbol in parser.nonterminals:
