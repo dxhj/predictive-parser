@@ -15,7 +15,7 @@ else:
 
 parser.verbose_match(["id", "+", "id"])
 """
- verbose_match() outputs the sequence of derivation steps:
+ .verbose_match() outputs the sequence of derivation steps:
 	** Action: reduce E on `id` to: T E'
 	** Action: reduce T on `id` to: F T'
 	** Action: reduce F on `id` to: id
