@@ -1,2 +1,2 @@
 # predictive-parser
-A simple (naive) LL(1) parser.
+A simple (naive) LL(1) parser in Python.
