@@ -5,7 +5,7 @@ A simple (naive) LL(1) parser in Python.
 
 ## Basic usage
 1. The first parameter receives the start symbol, the second receives the grammar:
-  ```
+  ```python
   parser = PredictiveParser("S", {
     # Each nonterminal contains a list of productions:
     # S -> hello
@@ -14,7 +14,7 @@ A simple (naive) LL(1) parser in Python.
   ```
 
 2. Empty productions are represented by [""]:
-  ```
+  ```python
   parser = PredictiveParser("S", {
     # S -> hello T
   	"S": [["hello", "T"]],
