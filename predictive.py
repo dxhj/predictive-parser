@@ -81,9 +81,9 @@ class PredictiveParser(object):
 					prod = self.table[top, seq[si]]
 					stack.pop()
 					if prod == [""]:
-						print "** Action: reduce {0} on `{1}` to: ε".format(top, seq[si])
+						print "** Action: derive {0} on `{1}` to: ε".format(top, seq[si])
 					else:
-						print "** Action: reduce {0} on `{1}` to: {2}".format(top, seq[si], " ".join(prod))
+						print "** Action: derive {0} on `{1}` to: {2}".format(top, seq[si], " ".join(prod))
 						stack.extend(reversed(prod))
 				except KeyError:
 					print "ERROR: Not able to find derivation of {0} on `{1}`".format(top, seq[si])
