@@ -10,3 +10,10 @@ parser = PredictiveParser("E", {
 
 for nonterminal, symbols in parser.follow_dict.iteritems():
 	print nonterminal, symbols
+"""
+	T' set(['$', ')', '+'])
+	E' set([')', '$'])
+	E set([')', '$'])
+	T set([')', '+', '$'])
+	F set(['$', ')', '+', '*'])
+"""
