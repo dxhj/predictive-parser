@@ -4,7 +4,7 @@ A simple (naive) LL(1) parser in Python.
 * You can send pull requests, I'd appreciate.
 
 ## Basic usage
-1. The first parameter receives the start symbol, the second receives the production itself:
+1. The first parameter receives the start symbol, the second receives the grammar:
   ```
   parser = PredictiveParser("S", {
     # Each nonterminal contains a list of productions:
