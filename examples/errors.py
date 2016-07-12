@@ -15,10 +15,10 @@ else:
 	print "REJECT"
 """
   outputs: 
-  ** Action: reduce S on `0` to: 0 S'
+  ** Action: derive S on `0` to: 0 S'
   ** Action: match `0`
-  ** Action: reduce S' on `0` to: S 1
-  ** Action: reduce S on `0` to: 0 S'
+  ** Action: derive S' on `0` to: S 1
+  ** Action: derive S on `0` to: 0 S'
   ** Action: match `0`
   ERROR: Not able to find derivation of S' on `$`
   REJECT
@@ -31,12 +31,12 @@ else:
 	print "REJECT"
 """
   outputs:
-  ** Action: reduce S on `0` to: 0 S'
+  ** Action: derive S on `0` to: 0 S'
   ** Action: match `0`
-  ** Action: reduce S' on `0` to: S 1
-  ** Action: reduce S on `0` to: 0 S'
+  ** Action: derive S' on `0` to: S 1
+  ** Action: derive S on `0` to: 0 S'
   ** Action: match `0`
-  ** Action: reduce S' on `1` to: 1
+  ** Action: derive S' on `1` to: 1
   ** Action: match `1`
   REJECT
 """
