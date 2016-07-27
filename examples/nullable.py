@@ -8,24 +8,22 @@ parser = PredictiveParser("E", {
 	"F": [["(", "E", ")"], ["id"]]
 })
 
-for symbol, nullable in parser.null_dict.iteritems():
-	if symbol in parser.terminals:
-		print symbol + ": " + str(nullable)
+for terminal in parser.terminals:
+	print terminal + ": " + str(parser.null_dict[terminal])
 """
 	): False
 	(: False
+	+: False
 	*: False
 	id: False
-	+: False
 """
 
-for symbol, nullable in parser.null_dict.iteritems():
-	if symbol in parser.nonterminals:
-		print symbol + ": " + str(nullable)
+for nonterminal in parser.nonterminals:
+	print nonterminal + ": " + str(parser.null_dict[nonterminal])
 """
-	E: False
-	F: False
-	E': True
-	T: False
 	T': True
+	E': True
+	E: False
+	T: False
+	F: False
 """
