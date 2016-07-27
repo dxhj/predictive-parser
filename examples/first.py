@@ -9,25 +9,23 @@ parser = PredictiveParser("E", {
 })
 
 # Print first set of terminals.
-for symbol, items in parser.first_dict.iteritems():
-	if symbol in parser.terminals:
-		print symbol, items
+for terminal in parser.terminals:
+	print terminal, parser.first_dict[terminal]
 """
 	) set([')'])
 	( set(['('])
+	+ set(['+'])
 	* set(['*'])
 	id set(['id'])
-	+ set(['+'])
 """
 		
 # Print first set of nonterminals.
-for symbol, items in parser.first_dict.iteritems():
-	if symbol in parser.nonterminals:
-		print symbol, items
+for nonterminal in parser.nonterminals:
+	print nonterminal, parser.first_dict[nonterminal]
 """
-	E set(['(', 'id'])
-	F set(['(', 'id'])
-	E' set(['', '+'])
-	T set(['(', 'id'])
 	T' set(['', '*'])
+	E' set(['', '+'])
+	E set(['(', 'id'])
+	T set(['(', 'id'])
+	F set(['(', 'id'])
 """
