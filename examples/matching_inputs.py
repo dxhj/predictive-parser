@@ -1,3 +1,6 @@
+#!/usr/bin/python
+# -*- coding: UTF-8 -*-
+
 from predictive import PredictiveParser
 
 parser = PredictiveParser("E", {
