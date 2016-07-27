@@ -1,3 +1,6 @@
+#!/usr/bin/python
+# -*- coding: UTF-8 -*-
+
 """
   A simple (naive) LL(1) parser.
   Copyright (C) 2016 Victor C. Martins (dxhj)
@@ -15,9 +18,6 @@
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
-
-#!/usr/bin/python
-# -*- coding: UTF-8 -*-
 
 class PredictiveParser(object):
 	def is_terminal(self, sym):
