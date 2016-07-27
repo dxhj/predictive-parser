@@ -22,13 +22,13 @@
 class PredictiveParser(object):
 	def is_terminal(self, sym):
 		if not sym or sym[0].isupper():
-			return 0
-		return 1
+			return False
+		return True
 
 	def is_nonterminal(self, sym):
 		if not sym or not sym[0].isupper():
-			return 0
-		return 1
+			return False
+		return True
 
 	def __init__(self, start, grammar):
 		self.start = start
