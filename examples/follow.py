@@ -1,19 +1,19 @@
-from predictive import PredictiveParser
+from predictive import EPSILON, PredictiveParser
 
 parser = PredictiveParser("E", {
-	"E": [["T", "E'"]],
-	"E'": [["+", "T", "E'"], [""]],
-	"T": [["F", "T'"]],
-	"T'": [["*", "F", "T'"], [""]],
-	"F": [["(", "E", ")"], ["id"]]
+    "E": [["T", "Ep"]],
+    "Ep": [["+", "T", "Ep"], [EPSILON]],
+    "T": [["F", "Tp"]],
+    "Tp": [["*", "F", "Tp"], [EPSILON]],
+    "F": [["(", "E", ")"], ["id"]],
 })
 
-for nonterminal, symbols in parser.follow_dict.iteritems():
-	print nonterminal, symbols
+for nonterminal, symbols in parser.follow_dict.items():
+    print(nonterminal, symbols)
 """
-	T' set(['$', ')', '+'])
-	E' set([')', '$'])
-	E set([')', '$'])
-	T set([')', '+', '$'])
-	F set(['$', ')', '+', '*'])
+  Tp {'$', ')', '+'}
+  Ep {')', '$'}
+  E {')', '$'}
+  T {')', '+', '$'}
+  F {'$', ')', '+', '*'}
 """

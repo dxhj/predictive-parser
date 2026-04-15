@@ -1,42 +1,56 @@
 from predictive import PredictiveParser
 
 parser = PredictiveParser("S", {
-	"S": [["0", "S'"]],
-	"S'": [["S", "1"], ["1"]]
+    "S": [["0", "Sp"]],
+    "Sp": [["S", "1"], ["1"]],
 })
 
 """
-  Using .verbose_match(), when the parser tries to access an entry that it's not in the table
-  it shows the attempt to retrive a production from table[nonterminal, terminal]:
+Using .verbose_match(), when the parser tries to access an entry that is not
+in the table it shows the attempt to retrieve a production from
+table[nonterminal, terminal]:
 """
 if parser.verbose_match(["0", "0"]):
-	print "ACCEPT"
+    print("ACCEPT")
 else:
-	print "REJECT"
+    print("REJECT")
 """
-  outputs: 
-  ** Action: derive S on `0` to: 0 S'
+  ** Action: derive S on `0` to: 0 Sp
   ** Action: match `0`
-  ** Action: derive S' on `0` to: S 1
-  ** Action: derive S on `0` to: 0 S'
+  ** Action: derive Sp on `0` to: S 1
+  ** Action: derive S on `0` to: 0 Sp
   ** Action: match `0`
-  ERROR: Not able to find derivation of S' on `$`
+  ERROR: Not able to find derivation of Sp on `$`
   REJECT
 """
 
-# The following wrong input doesn't make .verbose_match() to generate an error, but it's still not accepted:
 if parser.verbose_match(["0", "0", "1"]):
-	print "ACCEPT"
+    print("ACCEPT")
 else:
-	print "REJECT"
+    print("REJECT")
 """
-  outputs:
-  ** Action: derive S on `0` to: 0 S'
+  ** Action: derive S on `0` to: 0 Sp
   ** Action: match `0`
-  ** Action: derive S' on `0` to: S 1
-  ** Action: derive S on `0` to: 0 S'
+  ** Action: derive Sp on `0` to: S 1
+  ** Action: derive S on `0` to: 0 Sp
   ** Action: match `0`
-  ** Action: derive S' on `1` to: 1
+  ** Action: derive Sp on `1` to: 1
   ** Action: match `1`
   REJECT
+"""
+
+"""
+Using .detailed_match() returns a MatchResult with diagnostic info
+(position in the input, expected tokens, and actual token):
+"""
+result = parser.detailed_match(["0", "0"])
+print(result)
+"""
+  MatchResult(success=False, position=2, expected={'1'}, got='$')
+"""
+
+result = parser.detailed_match(["0", "0", "1"])
+print(result)
+"""
+  MatchResult(success=False, position=3, expected={'$'}, got='1')
 """

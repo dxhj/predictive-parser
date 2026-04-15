@@ -1,29 +1,29 @@
-from predictive import PredictiveParser
+from predictive import EPSILON, PredictiveParser
 
 parser = PredictiveParser("E", {
-	"E": [["T", "E'"]],
-	"E'": [["+", "T", "E'"], [""]],
-	"T": [["F", "T'"]],
-	"T'": [["*", "F", "T'"], [""]],
-	"F": [["(", "E", ")"], ["id"]]
+    "E": [["T", "Ep"]],
+    "Ep": [["+", "T", "Ep"], [EPSILON]],
+    "T": [["F", "Tp"]],
+    "Tp": [["*", "F", "Tp"], [EPSILON]],
+    "F": [["(", "E", ")"], ["id"]],
 })
 
 for terminal in parser.terminals:
-	print terminal + ": " + str(parser.null_dict[terminal])
+    print(f"{terminal}: {parser.null_dict[terminal]}")
 """
-	): False
-	(: False
-	+: False
-	*: False
-	id: False
+  ): False
+  (: False
+  +: False
+  *: False
+  id: False
 """
 
 for nonterminal in parser.nonterminals:
-	print nonterminal + ": " + str(parser.null_dict[nonterminal])
+    print(f"{nonterminal}: {parser.null_dict[nonterminal]}")
 """
-	T': True
-	E': True
-	E: False
-	T: False
-	F: False
+  Tp: True
+  Ep: True
+  E: False
+  T: False
+  F: False
 """
