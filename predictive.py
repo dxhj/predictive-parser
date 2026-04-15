@@ -4,204 +4,297 @@
 """
   A simple (naive) LL(1) parser.
   Copyright (C) 2016 Victor C. Martins (dxhj)
-  
+
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
   the Free Software Foundation, either version 3 of the License, or
   (at your option) any later version.
-  
+
   This program is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
   GNU General Public License for more details.
-  
+
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-class PredictiveParser(object):
-	def is_terminal(self, sym):
-		if not sym or sym[0].isupper():
-			return False
-		return True
+from __future__ import annotations
+from dataclasses import dataclass, field
 
-	def is_nonterminal(self, sym):
-		if not sym or not sym[0].isupper():
-			return False
-		return True
+EPSILON = ""
 
-	def __init__(self, start, grammar):
-		self.start = start
-		self.grammar = grammar
-		self.terminals = set()
-		self.nonterminals = set()
-		self.null_dict = self.gen_nullable()
-		self.first_dict = self.gen_first()
-		self.follow_dict = self.gen_follow()
-		self.table = self.gen_table()
 
-	def match(self, seq):
-		seq.append('$')
-		si = 0
-		stack = ['$', self.start]
-		top = self.start
-		while top != '$':
-			if top == seq[si]:
-				si = si + 1
-				stack.pop()
-			elif (self.is_terminal(top)):
-				return False
-			else:
-				try:
-					prod = self.table[top, seq[si]]
-					stack.pop()
-					if prod != [""]:
-						stack.extend(reversed(prod))
-				except KeyError:
-					return False
-			top = stack[-1]
-		return True
+@dataclass
+class MatchResult:
+    """Outcome of a parse attempt with optional diagnostic information."""
 
-	def verbose_match(self, seq, display_stack=False):
-		seq.append('$')
-		si = 0
-		stack = ['$', self.start]
-		top = self.start
-		while top != '$':
-			if display_stack:
-				print "Stack:", stack
-			if top == seq[si]:
-				si = si + 1
-				print "** Action: match `{0}`".format(top)
-				stack.pop()
-			elif (self.is_terminal(top)):
-				return False
-			else:
-				try:
-					prod = self.table[top, seq[si]]
-					stack.pop()
-					if prod == [""]:
-						print "** Action: derive {0} on `{1}` to: ε".format(top, seq[si])
-					else:
-						print "** Action: derive {0} on `{1}` to: {2}".format(top, seq[si], " ".join(prod))
-						stack.extend(reversed(prod))
-				except KeyError:
-					print "ERROR: Not able to find derivation of {0} on `{1}`".format(top, seq[si])
-					return False
-			top = stack[-1]
-		return True
+    success: bool
+    position: int = 0
+    expected: frozenset[str] = field(default_factory=frozenset)
+    got: str | None = None
 
-	def gen_table(self):
-		table = {}
-		for head, prods in self.grammar.iteritems():
-			for prod in prods:
-				first_set = self.first(prod)
-				for terminal in first_set - set([""]):
-					table[head, terminal] = prod
-				if "" in first_set:
-					for terminal in self.follow_dict[head]:
-						table[head, terminal] = prod
-					if '$' in self.follow_dict[head]:
-						table[head, '$'] = prod
-		return table
+    def __bool__(self) -> bool:
+        return self.success
 
-	def print_table(self):
-		for nonterminal in self.nonterminals:
-			for terminal in self.terminals.union(set(['$'])):
-				try:
-					prod = self.table[nonterminal, terminal]
-					print "(" + nonterminal + ", " + terminal + ") =",
-					print prod
-				except KeyError:
-					pass
+    def __repr__(self) -> str:
+        if self.success:
+            return "MatchResult(success=True)"
+        return (
+            f"MatchResult(success=False, position={self.position}, "
+            f"expected={set(self.expected)}, got={self.got!r})"
+        )
 
-	def gen_nullable(self):
-		null_dict = {"": True}
-		for head, prods in self.grammar.iteritems():
-			null_dict[head] = False
-			self.nonterminals.add(head)
-			for prod in prods:
-				for symbol in prod:
-					if self.is_terminal(symbol):
-						null_dict[symbol] = False
-						self.terminals.add(symbol)
-					elif not symbol:
-						null_dict[head] = True
-		while True:
-			changes = 0
-			for head, prods in self.grammar.iteritems():
-				for prod in prods:
-					all_nullable = True
-					for symbol in prod:
-						if not null_dict[symbol]:
-							all_nullable = False
-							break
-					if all_nullable and not (head in null_dict and null_dict[head]):
-						null_dict[head] = True
-						changes = changes + 1
-			if changes == 0:
-				return null_dict		
 
-	def nullable(self, symbols):
-		if not symbols:
-			return True
-		elif not self.null_dict[symbols[0]]:
-			return False
-		return self.nullable(symbols[1:])
+class PredictiveParser:
+    def __init__(self, start: str, grammar: dict[str, list[list[str]]]) -> None:
+        self.start = start
+        self.grammar = grammar
+        self.terminals, self.nonterminals = self._classify_symbols()
+        self._validate_grammar()
+        self.null_dict = self._gen_nullable()
+        self.first_dict = self._gen_first()
+        self.follow_dict = self._gen_follow()
+        self.table = self._gen_table()
 
-	def gen_first(self):
-		first_dict = {}
-		for head, prods in self.grammar.iteritems():
-			first_dict[head] = set()
-			for prod in prods:
-				for symbol in prod:
-					if self.is_terminal(symbol):
-						first_dict[symbol] = set([symbol])
-		while True:
-			changes = first_dict.copy()
-			for head, prods in self.grammar.iteritems():
-				for prod in prods:
-					if not prod[0]:
-						first_dict[head] = first_dict[head].union(set([""]))
-					else:
-						first_dict[head] = first_dict[head].union(first_dict[prod[0]])
-					for i in xrange(1, len(prod)):
-						if self.nullable(prod[:i]):
-							if not prod[0]:
-								first_dict[head] = first_dict[head].union(set([""]))
-							else:
-								first_dict[head] = first_dict[head].union(first_dict[prod[0]])
-			if changes == first_dict:
-				return first_dict
+    def __repr__(self) -> str:
+        return (
+            f"PredictiveParser(start={self.start!r}, "
+            f"nonterminals={len(self.nonterminals)}, "
+            f"terminals={len(self.terminals)})"
+        )
 
-	def first(self, symbols):
-		if not symbols:
-			return set()
-		if "" in symbols:
-			return set([""])
-		if not self.null_dict[symbols[0]]:
-			return self.first_dict[symbols[0]]
-		return self.first_dict[symbols[0]].union(self.first(symbols[1:]))
+    def _classify_symbols(self) -> tuple[set[str], set[str]]:
+        """Derive terminal and nonterminal sets from the grammar structure.
 
-	def gen_follow(self):
-		follow_dict = {}
-		for head in self.grammar:
-			if head == self.start:
-				follow_dict[self.start] = set(["$"])
-			else:
-				follow_dict[head] = set()
-		while True:
-			changes = follow_dict.copy()
-			for head, prods in self.grammar.iteritems():
-				for prod in prods:
+        Nonterminals are exactly the keys of the grammar dict.  Every other
+        non-epsilon symbol that appears in a production body is a terminal.
+        """
+        nonterminals = set(self.grammar.keys())
+        terminals: set[str] = set()
+        for prods in self.grammar.values():
+            for prod in prods:
+                for sym in prod:
+                    if sym != EPSILON and sym not in nonterminals:
+                        terminals.add(sym)
+        return terminals, nonterminals
 
-					for i in xrange(len(prod)-1):
-						if self.is_nonterminal(prod[i]):
-							follow_dict[prod[i]] = follow_dict[prod[i]].union(self.first(prod[i+1:]) - set([""]))	
+    def is_terminal(self, sym: str) -> bool:
+        return sym in self.terminals
 
-					for i in reversed(xrange(len(prod))):
-						if self.is_nonterminal(prod[i]) and self.nullable(prod[i+1:]):
-							follow_dict[prod[i]] = follow_dict[prod[i]].union(follow_dict[head])
+    def is_nonterminal(self, sym: str) -> bool:
+        return sym in self.nonterminals
 
-			if changes == follow_dict:
-				return follow_dict	
+    def _validate_grammar(self) -> None:
+        if self.start not in self.grammar:
+            raise ValueError(
+                f"start symbol {self.start!r} is not defined in the grammar"
+            )
+        for head, prods in self.grammar.items():
+            for prod in prods:
+                for sym in prod:
+                    if sym != EPSILON and sym[0].isupper() and sym not in self.grammar:
+                        raise ValueError(
+                            f"nonterminal {sym!r} in production "
+                            f"{head} \u2192 {' '.join(prod)} has no "
+                            f"defining rule in the grammar"
+                        )
+
+    def _run_match(
+        self,
+        seq: list[str],
+        verbose: bool = False,
+        display_stack: bool = False,
+    ) -> MatchResult:
+        tokens = list(seq) + ["$"]
+        si = 0
+        stack = ["$", self.start]
+        top = self.start
+        while top != "$":
+            if display_stack and verbose:
+                print("Stack:", stack)
+            if top == tokens[si]:
+                si += 1
+                if verbose:
+                    print(f"** Action: match `{top}`")
+                stack.pop()
+            elif self.is_terminal(top):
+                return MatchResult(
+                    success=False,
+                    position=si,
+                    expected=frozenset({top}),
+                    got=tokens[si],
+                )
+            else:
+                prod = self.table.get((top, tokens[si]))
+                if prod is None:
+                    expected = frozenset(
+                        t for nt, t in self.table if nt == top
+                    )
+                    if verbose:
+                        print(
+                            f"ERROR: Not able to find derivation of"
+                            f" {top} on `{tokens[si]}`"
+                        )
+                    return MatchResult(
+                        success=False,
+                        position=si,
+                        expected=expected,
+                        got=tokens[si],
+                    )
+                stack.pop()
+                if prod == [EPSILON]:
+                    if verbose:
+                        print(
+                            f"** Action: derive {top} on "
+                            f"`{tokens[si]}` to: \u03b5"
+                        )
+                else:
+                    if verbose:
+                        print(
+                            f"** Action: derive {top} on "
+                            f"`{tokens[si]}` to: {' '.join(prod)}"
+                        )
+                    stack.extend(reversed(prod))
+            top = stack[-1]
+        if tokens[si] == "$":
+            return MatchResult(success=True, position=si)
+        return MatchResult(
+            success=False,
+            position=si,
+            expected=frozenset({"$"}),
+            got=tokens[si],
+        )
+
+    def match(self, seq: list[str]) -> bool:
+        return self._run_match(seq).success
+
+    def detailed_match(self, seq: list[str]) -> MatchResult:
+        """Like match(), but returns a MatchResult with diagnostic info."""
+        return self._run_match(seq)
+
+    def verbose_match(self, seq: list[str], display_stack: bool = False) -> bool:
+        return self._run_match(
+            seq, verbose=True, display_stack=display_stack
+        ).success
+
+    def _gen_table(self) -> dict[tuple[str, str], list[str]]:
+        table: dict[tuple[str, str], list[str]] = {}
+        for head, prods in self.grammar.items():
+            for prod in prods:
+                first_set = self.first(prod)
+                for terminal in first_set - {EPSILON}:
+                    if (head, terminal) in table and table[head, terminal] != prod:
+                        raise ValueError(
+                            f"LL(1) conflict at ({head}, {terminal}): "
+                            f"{table[head, terminal]} vs {prod}"
+                        )
+                    table[head, terminal] = prod
+                if EPSILON in first_set:
+                    for terminal in self.follow_dict[head]:
+                        if (head, terminal) in table and table[head, terminal] != prod:
+                            raise ValueError(
+                                f"LL(1) conflict at ({head}, {terminal}): "
+                                f"{table[head, terminal]} vs {prod}"
+                            )
+                        table[head, terminal] = prod
+        return table
+
+    def print_table(self) -> None:
+        for nonterminal in self.nonterminals:
+            for terminal in self.terminals | {"$"}:
+                prod = self.table.get((nonterminal, terminal))
+                if prod is not None:
+                    print(f"({nonterminal}, {terminal}) = {prod}")
+
+    def _gen_nullable(self) -> dict[str, bool]:
+        null_dict: dict[str, bool] = {EPSILON: True}
+        for terminal in self.terminals:
+            null_dict[terminal] = False
+        for head, prods in self.grammar.items():
+            null_dict[head] = False
+            for prod in prods:
+                for sym in prod:
+                    if sym == EPSILON:
+                        null_dict[head] = True
+
+        changed = True
+        while changed:
+            changed = False
+            for head, prods in self.grammar.items():
+                if not null_dict[head]:
+                    for prod in prods:
+                        if all(null_dict[s] for s in prod):
+                            null_dict[head] = True
+                            changed = True
+        return null_dict
+
+    def nullable(self, symbols: list[str]) -> bool:
+        return all(self.null_dict[s] for s in symbols)
+
+    def _gen_first(self) -> dict[str, set[str]]:
+        first_dict: dict[str, set[str]] = {}
+        for terminal in self.terminals:
+            first_dict[terminal] = {terminal}
+        for head in self.grammar:
+            first_dict[head] = set()
+
+        changed = True
+        while changed:
+            changed = False
+            for head, prods in self.grammar.items():
+                before = len(first_dict[head])
+                for prod in prods:
+                    for i, sym in enumerate(prod):
+                        if not self.nullable(prod[:i]):
+                            break
+                        if sym == EPSILON:
+                            first_dict[head].add(EPSILON)
+                        else:
+                            first_dict[head] |= first_dict[sym] - {EPSILON}
+                    if self.nullable(prod):
+                        first_dict[head].add(EPSILON)
+                if len(first_dict[head]) > before:
+                    changed = True
+        return first_dict
+
+    def first(self, symbols: list[str]) -> set[str]:
+        result: set[str] = set()
+        for sym in symbols:
+            if sym == EPSILON:
+                result.add(EPSILON)
+                return result
+            result |= self.first_dict[sym] - {EPSILON}
+            if not self.null_dict[sym]:
+                return result
+        result.add(EPSILON)
+        return result
+
+    def _gen_follow(self) -> dict[str, set[str]]:
+        follow_dict: dict[str, set[str]] = {}
+        for head in self.grammar:
+            follow_dict[head] = {"$"} if head == self.start else set()
+
+        changed = True
+        while changed:
+            changed = False
+            for head, prods in self.grammar.items():
+                for prod in prods:
+                    for i in range(len(prod) - 1):
+                        if self.is_nonterminal(prod[i]):
+                            before = len(follow_dict[prod[i]])
+                            follow_dict[prod[i]] |= (
+                                self.first(prod[i + 1 :]) - {EPSILON}
+                            )
+                            if len(follow_dict[prod[i]]) > before:
+                                changed = True
+
+                    for i in reversed(range(len(prod))):
+                        if self.is_nonterminal(prod[i]) and self.nullable(
+                            prod[i + 1 :]
+                        ):
+                            before = len(follow_dict[prod[i]])
+                            follow_dict[prod[i]] |= follow_dict[head]
+                            if len(follow_dict[prod[i]]) > before:
+                                changed = True
+        return follow_dict
