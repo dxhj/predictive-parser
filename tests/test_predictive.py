@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
 import pytest
+
 from predictive import EPSILON, MatchResult, PredictiveParser, SimpleToken, TokenLike
 
 

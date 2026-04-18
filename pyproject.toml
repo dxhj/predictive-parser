@@ -1,17 +1,27 @@
 [project]
 name = "predictive-parser"
-version = "1.0.0"
-description = "A small, dependency-free LL(1) predictive parser for Python."
+version = "2.0.0"
+description = "A compact LL(1) predictive parser toolkit for Python — lexer, parse trees, semantic actions, grammar DSL, and CLI."
 readme = "README.md"
 requires-python = ">=3.10"
-license = "GPL-3.0-or-later"
-license-files = ["LICENSE"]
+license = { file = "LICENSE" }
 authors = [
     { name = "Victor C. Martins", email = "vctormartins1@gmail.com" },
 ]
-keywords = ["parser", "ll1", "predictive", "grammar", "compiler", "parsing"]
+keywords = [
+    "parser",
+    "ll1",
+    "llk",
+    "predictive",
+    "grammar",
+    "compiler",
+    "parsing",
+    "lexer",
+    "ast",
+    "ebnf",
+]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
     "Operating System :: OS Independent",
@@ -23,6 +33,7 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
     "Topic :: Software Development :: Compilers",
     "Topic :: Software Development :: Interpreters",
+    "Topic :: Software Development :: Libraries :: Python Modules",
     "Typing :: Typed",
 ]
 
@@ -30,28 +41,59 @@ classifiers = [
 Homepage = "https://github.com/dxhj/predictive-parser"
 Repository = "https://github.com/dxhj/predictive-parser"
 Issues = "https://github.com/dxhj/predictive-parser/issues"
+Changelog = "https://github.com/dxhj/predictive-parser/releases"
 
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
+    "hypothesis>=6.0",
     "ruff>=0.5",
     "mypy>=1.8",
 ]
+docs = [
+    "mkdocs>=1.5",
+    "mkdocs-material>=9.0",
+]
+
+[project.scripts]
+predictive-parser = "predictive_parser.cli:main"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["."]
-only-include = ["predictive.py"]
+packages = ["predictive_parser"]
+only-include = ["predictive_parser", "predictive.py"]
 
 [tool.hatch.build.targets.sdist]
-include = ["predictive.py", "README.md", "LICENSE", "tests/**"]
+include = [
+    "predictive_parser/**",
+    "predictive.py",
+    "README.md",
+    "LICENSE",
+    "tests/**",
+    "docs/**",
+    "examples/**",
+    "notes/**",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.coverage.run]
+source = ["predictive_parser", "predictive"]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+]
 
 [tool.ruff]
 line-length = 100
@@ -59,8 +101,22 @@ target-version = "py310"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]
+ignore = [
+    "E501",    # line-length — we soft-enforce via formatter.
+    "B008",    # default factory calls in dataclasses are fine.
+    "RUF001",  # allow unicode chars like ε, α in identifiers / docstrings.
+    "RUF002",  # allow Greek letters in docstrings.
+    "RUF003",  # allow Greek letters in comments.
+    "RUF005",  # list concatenation is often clearer than unpacking.
+    "RUF015",  # single-element slice is sometimes easier to read.
+    "SIM108",  # ternary vs if/else is a style choice.
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B011", "RUF043", "E402"]
 
 [tool.mypy]
 python_version = "3.10"
-strict = true
-files = ["predictive.py"]
+strict = false
+files = ["predictive_parser", "predictive.py"]
+ignore_missing_imports = true
