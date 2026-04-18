@@ -117,6 +117,7 @@ $ predictive-parser dump  grammar.gr tables.json
 - **[Tutorial](docs/tutorial.md)** — build a calculator parser from scratch.
 - **[Concepts](docs/concepts.md)** — LL(1), FIRST / FOLLOW, ε, the `$` endmarker.
 - **[Grammar reference](docs/grammar.md)** — DSL syntax, EBNF, actions.
+- **[Semantic actions](docs/actions.md)** — inline `{ ... }`, decorators, defaults, `ActionError`.
 
 ## Backward compatibility
 
