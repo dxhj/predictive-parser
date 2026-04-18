@@ -1,5 +1,7 @@
+from dataclasses import dataclass
+
 import pytest
-from predictive import EPSILON, MatchResult, PredictiveParser
+from predictive import EPSILON, MatchResult, PredictiveParser, SimpleToken, TokenLike
 
 
 def _expr_grammar():
@@ -520,3 +522,84 @@ class TestEpsilon:
         p = _build(_expr_grammar)
         assert p.table["Ep", ")"] == [EPSILON]
         assert p.table["Ep", "$"] == [EPSILON]
+
+
+# ===================================================================
+# 15. TokenLike / bring-your-own-lexer support
+# ===================================================================
+
+
+@dataclass
+class _PlyStyleToken:
+    """Mimics a PLY LexToken: has .type plus arbitrary extra attributes."""
+
+    type: str
+    value: str = ""
+    lineno: int = 0
+    lexpos: int = 0
+
+
+class TestTokenLikeInput:
+    def test_simple_token_satisfies_protocol(self):
+        t = SimpleToken(type="id", value="x")
+        assert isinstance(t, TokenLike)
+
+    def test_ply_style_token_satisfies_protocol(self):
+        t = _PlyStyleToken(type="id", value="x", lineno=1, lexpos=0)
+        assert isinstance(t, TokenLike)
+
+    def test_match_accepts_simple_tokens(self):
+        p = _build(_expr_grammar)
+        tokens = [SimpleToken(type="id"), SimpleToken(type="+"), SimpleToken(type="id")]
+        assert p.match(tokens) is True
+
+    def test_match_accepts_ply_style_tokens(self):
+        p = _build(_expr_grammar)
+        tokens = [
+            _PlyStyleToken(type="id", value="a", lineno=1, lexpos=0),
+            _PlyStyleToken(type="+", value="+", lineno=1, lexpos=2),
+            _PlyStyleToken(type="id", value="b", lineno=1, lexpos=4),
+        ]
+        assert p.match(tokens) is True
+
+    def test_match_accepts_mixed_strings_and_tokens(self):
+        """Mixed input works: strings are auto-wrapped, tokens pass through."""
+        p = _build(_expr_grammar)
+        mixed = ["id", SimpleToken(type="+"), "id"]
+        assert p.match(mixed) is True
+
+    def test_detailed_match_reports_token_type_on_failure(self):
+        """MatchResult.got must be the .type string, not the object repr."""
+        p = _build(_expr_grammar)
+        result = p.detailed_match([SimpleToken(type="+")])
+        assert result.success is False
+        assert result.got == "+"
+        assert "id" in result.expected
+
+    def test_string_input_still_reports_strings(self):
+        """Backward compat: passing list[str] yields string .got values."""
+        p = _build(_expr_grammar)
+        result = p.detailed_match(["+"])
+        assert result.got == "+"
+        assert isinstance(result.got, str)
+
+    def test_empty_token_list_rejected(self):
+        p = _build(_expr_grammar)
+        assert p.match([]) is False
+        result = p.detailed_match([])
+        assert result.success is False
+        assert result.got == "$"
+
+    def test_tokens_input_not_mutated(self):
+        p = _build(_expr_grammar)
+        tokens = [SimpleToken(type="id"), SimpleToken(type="+"), SimpleToken(type="id")]
+        original = list(tokens)
+        p.match(tokens)
+        assert tokens == original
+
+    def test_verbose_match_with_tokens(self, capsys):
+        p = _build(_expr_grammar)
+        tokens = [SimpleToken(type="id")]
+        assert p.verbose_match(tokens) is True
+        captured = capsys.readouterr()
+        assert "match" in captured.out.lower()

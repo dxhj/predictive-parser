@@ -20,9 +20,42 @@
 """
 
 from __future__ import annotations
+
 from dataclasses import dataclass, field
+from typing import Protocol, Sequence, Union, runtime_checkable
 
 EPSILON = ""
+
+
+@runtime_checkable
+class TokenLike(Protocol):
+    @property
+    def type(self) -> str: ...
+
+
+@dataclass(frozen=True)
+class SimpleToken:
+    type: str
+    value: str | None = None
+
+
+TokenInput = Sequence[Union[str, TokenLike]]
+
+
+def _normalize_tokens(seq: TokenInput) -> list[TokenLike]:
+    """Normalize mixed input (strings and/or TokenLike) into a token list.
+
+    Strings are wrapped in :class:`SimpleToken`. Existing token-like objects
+    are passed through unchanged so caller metadata (line, column, value) is
+    preserved for downstream use.
+    """
+    result: list[TokenLike] = []
+    for item in seq:
+        if isinstance(item, str):
+            result.append(SimpleToken(type=item, value=item))
+        else:
+            result.append(item)
+    return result
 
 
 @dataclass
@@ -102,18 +135,20 @@ class PredictiveParser:
 
     def _run_match(
         self,
-        seq: list[str],
+        seq: TokenInput,
         verbose: bool = False,
         display_stack: bool = False,
     ) -> MatchResult:
-        tokens = list(seq) + ["$"]
+        tokens = _normalize_tokens(seq)
+        tokens.append(SimpleToken(type="$", value="$"))
         si = 0
         stack = ["$", self.start]
         top = self.start
         while top != "$":
+            cur_type = tokens[si].type
             if display_stack and verbose:
                 print("Stack:", stack)
-            if top == tokens[si]:
+            if top == cur_type:
                 si += 1
                 if verbose:
                     print(f"** Action: match `{top}`")
@@ -123,10 +158,10 @@ class PredictiveParser:
                     success=False,
                     position=si,
                     expected=frozenset({top}),
-                    got=tokens[si],
+                    got=cur_type,
                 )
             else:
-                prod = self.table.get((top, tokens[si]))
+                prod = self.table.get((top, cur_type))
                 if prod is None:
                     expected = frozenset(
                         t for nt, t in self.table if nt == top
@@ -134,46 +169,48 @@ class PredictiveParser:
                     if verbose:
                         print(
                             f"ERROR: Not able to find derivation of"
-                            f" {top} on `{tokens[si]}`"
+                            f" {top} on `{cur_type}`"
                         )
                     return MatchResult(
                         success=False,
                         position=si,
                         expected=expected,
-                        got=tokens[si],
+                        got=cur_type,
                     )
                 stack.pop()
                 if prod == [EPSILON]:
                     if verbose:
                         print(
                             f"** Action: derive {top} on "
-                            f"`{tokens[si]}` to: \u03b5"
+                            f"`{cur_type}` to: \u03b5"
                         )
                 else:
                     if verbose:
                         print(
                             f"** Action: derive {top} on "
-                            f"`{tokens[si]}` to: {' '.join(prod)}"
+                            f"`{cur_type}` to: {' '.join(prod)}"
                         )
                     stack.extend(reversed(prod))
             top = stack[-1]
-        if tokens[si] == "$":
+        if tokens[si].type == "$":
             return MatchResult(success=True, position=si)
         return MatchResult(
             success=False,
             position=si,
             expected=frozenset({"$"}),
-            got=tokens[si],
+            got=tokens[si].type,
         )
 
-    def match(self, seq: list[str]) -> bool:
+    def match(self, seq: TokenInput) -> bool:
         return self._run_match(seq).success
 
-    def detailed_match(self, seq: list[str]) -> MatchResult:
+    def detailed_match(self, seq: TokenInput) -> MatchResult:
         """Like match(), but returns a MatchResult with diagnostic info."""
         return self._run_match(seq)
 
-    def verbose_match(self, seq: list[str], display_stack: bool = False) -> bool:
+    def verbose_match(
+        self, seq: TokenInput, display_stack: bool = False
+    ) -> bool:
         return self._run_match(
             seq, verbose=True, display_stack=display_stack
         ).success
